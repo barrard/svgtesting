@@ -7,144 +7,142 @@ const svgWidth = 1000;
 const svgHeight = 500;
 const width = 20;
 const height = 20;
-const animationTimer = 100;
-let recs = [];
+const animationTimer = 1000;
+const shapes = 500;
+
 function App() {
-    const svgRef = useRef();
-    const [tick, setTick] = useState(0);
-    const [data, setData] = useState([]);
+	const svgRef = useRef();
+	// const [tick, setTick] = useState(0);
+	const [data, setData] = useState([]);
+	const [left, setLeft] = useState(-10);
+	const [right, setRight] = useState(10);
+	const [down, setDown] = useState(10);
+	const [up, setUp] = useState(-10);
+	const [speed, setSpeed] = useState(100);
 
-    useEffect(() => {
-        let data = makeData();
-        setData(data);
-        let timer;
-        setTimeout(() => {
-            timer = setInterval(() => {
-                setTick((tick) => {
-                    console.log({ tick: tick + 1 });
-                    return tick + 1;
-                });
-            }, animationTimer);
-        }, 10);
-        return () => {
-            console.log("cleanup timer");
-            clearInterval(timer);
-        };
-    }, []);
+	let leftRef = useRef(left);
+	let rightRef = useRef(right);
+	let downRef = useRef(down);
+	let upRef = useRef(up);
+	let speedRef = useRef(speed);
 
-    useEffect(() => {
-        draw();
-        return () => {
-            console.log("cleanup draw");
-        };
-    }, [svgRef, tick]);
+	useEffect(() => {
+		let timer = setInterval(() => {
+			let newData = makeSingleData(data, leftRef.current, upRef.current, downRef.current, rightRef.current);
+			setData([...newData]);
+		}, speed);
+		return () => {
+			console.log("cleanup draw");
+			clearInterval(timer);
+		};
+	}, [speed]);
 
-    function draw() {
-        console.log("draw");
-        if (!data.length) return console.log("no data yet");
-        console.log({ tick });
-        let index = Math.floor(tick % data.length);
-        console.log({ data: data[index] });
-        if (!recs.length) {
-            debugger;
-            recs = data[index].map((rectData, i) => {
-                let rectRef = useRef();
-                let r = <Rect ref={rectRef} key={i} id={i} data={rectData} tick={tick} />;
-                return rectRef;
-            });
-        }
-        recs.forEach((rec, iRec) => {
-            debugger;
-            // rec.props.x = data[index][iRec].x;
-            console.log(rec);
-            debugger;
-            // rec.setTick(tick);
-        });
+	useEffect(() => {
+		draw();
+		return () => {
+			console.log("cleanup timer");
+		};
+	}, [data]);
 
-        console.log(recs);
-        debugger;
-        return;
-    }
+	function draw() {
+		console.log("draw");
 
-    return (
-        <div className="App">
-            <StyledSvg width={svgWidth} height={svgHeight} ref={svgRef}>
-                {draw()}
-            </StyledSvg>
-        </div>
-    );
+		return data.map(({ x, y, color }, i) => (
+			<rect fill={color} key={i} x={x} y={y} width={width} height={height} />
+		));
+	}
+
+	function makeSingleData(data = [], left, up, down, right) {
+		for (let i = 0; i < shapes; i++) {
+			let x, y, color;
+			if (!data[i]) {
+				color = `rgb(${rand(0, 255)}, ${rand(0, 255)}, ${rand(0, 255)}`;
+				x = rand(0, svgWidth);
+				y = rand(0, svgHeight);
+				data[i] = { color, y, x };
+			}
+
+			color = data[i].color;
+			x = data[i].x;
+			y = data[i].y;
+
+			data[i] = {
+				x: x + rand(rand(left, 0), rand(0, right)),
+				y: y + rand(rand(up, 0), rand(0, down)),
+				color,
+			};
+			console.log({ left, up, down, right });
+		}
+		return data;
+	}
+
+	return (
+		<div className="App">
+			<StyledSvg speed={speed} width={svgWidth} height={svgHeight}>
+				{draw()}
+			</StyledSvg>
+			<InputContainer>
+				<Input name="Speed" dataRef={speedRef} data={speed} setData={setSpeed} />
+				<Input name="Right" dataRef={rightRef} data={right} setData={setRight} />
+				<Input name="Left" dataRef={leftRef} data={left} setData={setLeft} />
+				<Input name="Up" dataRef={upRef} data={up} setData={setUp} />
+				<Input name="Down" dataRef={downRef} data={down} setData={setDown} />
+			</InputContainer>
+		</div>
+	);
 }
 
 export default App;
 
-class Rect extends React.Component {
-    constructor(props) {
-        super(props);
+const Input = ({ name, data, setData, dataRef }) => {
+	return (
+		<>
+			<label htmlFor={name}>{name}</label>
+			<input
+				type="number"
+				value={data}
+				onChange={(e) => {
+					dataRef.current = parseInt(e.target.value);
+					setData(parseInt(e.target.value));
+				}}
+			/>
+		</>
+	);
+};
 
-        this.state = {
-            // currentTheta: 0
-            data: props.data,
-            tick: props.tick,
-        };
-        this.setTick = this.setTick.bind(this);
-    }
-
-    componentDidMount() {
-        console.log(`Mounting rect ${this.props.id}`);
-        // const animate = () => {
-        //     const nextTheta = this.state.currentTheta > this.props.angularLimit ? 0 : this.state.currentTheta + this.props.thetaDelta;
-
-        //     this.setState({ currentTheta: nextTheta });
-        //     this.rafId = requestAnimationFrame(animate);
-        // };
-
-        // this.rafId = requestAnimationFrame(animate);
-    }
-
-    componentWillUnmount() {
-        // cancelAnimationFrame(this.rafId);
-        console.log(`DIS-Mounting rect ${this.props.id}`);
-    }
-
-    setTick(tick) {
-        this.setState({ tick });
-    }
-    render() {
-        let { x, y, width, height, color } = this.state.data[this.state.tick];
-        debugger;
-        return <rect fill={color} key={this.props.id} x={x} y={y} width={width} height={height} />;
-    }
-}
+const InputContainer = styled.div``;
 
 const StyledSvg = styled.svg`
-    border: 1px solid black;
-    background-color: green;
+	transition: transform ${({ speed }) => speed + "ms"};
+
+	border: 1px solid black;
+	background-color: green;
 `;
 
-function makeData() {
-    const shapes = 500;
-    const ticks = 50;
-    let data = [];
-    for (let tick = 0; tick < ticks; tick++) {
-        //make shapes
-        if (!data[tick]) {
-            data[tick] = [];
-        }
+// function makeData() {
+//     const shapes = 250;
+//     const ticks = 250;
+//     let data = [];
+//     for (let tick = 0; tick < ticks; tick++) {
+//         //make shapes
+//         if (!data[tick]) {
+//             data[tick] = [];
+//         }
 
-        for (let i = 0; i < shapes; i++) {
-            console.log(data[i - 1]);
-            let color = data[tick - 1]
-                ? data[tick - 1][i].color
-                : `rgb(${rand(0, 255)}, ${rand(0, 255)}, ${rand(0, 255)}`;
-            let x = data[tick - 1] ? data[tick - 1][i].x : rand(0, svgWidth);
-            let y = data[tick - 1] ? data[tick - 1][i].y : rand(0, svgHeight);
-            data[tick][i] = { x: x + rand(rand(-10, 0), rand(0, 10)), y: y + rand(rand(-10, 0), rand(0, 10)), color };
-        }
-    }
-    debugger;
-    return data;
-}
+//         for (let i = 0; i < shapes; i++) {
+//             console.log(data[i - 1]);
+//             let color = data[tick - 1]
+//                 ? data[tick - 1][i].color
+//                 : `rgb(${rand(0, 255)}, ${rand(0, 255)}, ${rand(0, 255)}`;
+//             let x = data[tick - 1] ? data[tick - 1][i].x : rand(0, svgWidth);
+//             let y = data[tick - 1] ? data[tick - 1][i].y : rand(0, svgHeight);
+//             data[tick][i] = { x: x + rand(rand(-10, 0), rand(0, 10)), y: y + rand(rand(-10, 0), rand(0, 10)), color };
+//         }
+//     }
+//     debugger;
+//     return data;
+// }
 
 function rand(min, max) {
-    return parseInt((Math.random() * (max - min) + min).toFixed());
+	return parseInt((Math.random() * (max - min) + min).toFixed());
 }
